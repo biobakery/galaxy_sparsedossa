@@ -1,0 +1,154 @@
+<tool id="sparsedossa" name="sparsedossa" version="1.0.1">
+<description></description>
+<command interpreter="python">sparsedossa_wrapper.py 
+--features $features
+--samples $samples
+--metadata $metadata
+--output1 $output1
+--output2 $output2
+--output3 $output3 
+</command>
+
+<inputs>
+        <param name="features" type="integer" size="8" value="150" label="features"/>
+        <param name="samples" type="integer" size="8" value="180" label="samples"/>
+        <param name="metadata" type="integer" size="8" value="10" label="metadata"/>
+</inputs>
+<outputs>
+         <data format="pdf" name="output1"  />
+         <data format="tabular" name="output2" />
+         <data format="tabular" name="output3" />
+</outputs>
+<help>
+
+**SparseDOSSA:**
+----------------
+
+**Sparse Data Observations for the Simulation of Synthetic Abundances**
+
+AUTHORS: Boyu Ren (bor158@mail.harvard.edu)
+
+**Description**
+---------------
+
+SparseDOSSA introduces a hierarchical model of microbial ecological population structure. It is capable of simulating realistic metagenomic data with known correlation structures, and thus provides a gold standard to enable benchmarking of statistical metagenomics methods. SparseDOSSA's model captures the marginal distribution of each microbial feature as a truncated, zero-inflated log-normal distribution, with parameters derived in turn from a parent log-normal distribution. The model can be effectively fit to reference microbial datasets in order to parameterize their microbes and communities, or to simulate synthetic datasets of similar population structure. Most importantly, it allows users to include both known feature-feature and feature-metadata correlation structures.
+
+
+
+**Pre-requisites**
+------------------
+
+SparseDOSSA requires *R 3.0.2* or higher with [*optparse*](https://cran.r-project.org/web/packages/optparse/optparse.pdf) library installed.
+
+
+
+**Installation**
+----------------
+
+SparseDOSSA can be obtained by either [Download SparseDOSSA](https://bitbucket.org/biobakery/sparsedossa/get/default.zip)
+
+**OR**
+
+Cloning the repository via the following command
+
+** hg clone https://bitbucket.org/biobakery/sparsedossa**
+
+
+**Model Specification**
+-----------------------
+
+The SparseDOSSA generative model has three main components:
+
+1. Estimation of model parameters for a null matrix
+
+2. Generation of the null matrix
+
+3. Spiking associations into the null matrix. 
+
+**Estimation of model parameters**
+
+We introduced a hierarchical model to jointly describe the distribution characteristics of OTUs. The model is summarized in the following figure:
+
+.. image:: https://bitbucket.org/repo/89po5a/images/2630912313-Figure1.jpg
+    :height: 350
+    :width: 700
+
+**Basic Usage**
+---------------
+
+This section presents some basic usages of SparseDOSSA.
+
+SparseDOSSA's hierarchical model is calibrated using the [PRISM dataset](https://www.dropbox.com/s/akgv0bv8bbpzcqo/prism.tsv?dl=0) by default. If you have your own reference dataset and would like to simulate data based on it, please follow the example below. Your dataset must be in a QIIME OTU table format, that is taxonomic units in rows and samples in columns, with each cell indicates the observed counts. Assume the file is *reference_OTU.txt*, using the following command, we can simulate microbiome dataset that has the same dimension and follows similar patterns with *reference_OTU.txt*:
+
+**synthetic_datasets_script.R -c reference_OTU.txt**
+
+Here is a basic example of simulating dataset with 150 features (OTUs), 180 samples and 10 metadata for each type (binary, quaternary and continuous), without any correlation structure. We use the default model parameters:
+
+**synthetic_datasets_script.R -f 150 -n 180 -p 10**
+
+The resulting community is very similar to the original PRISM dataset. We plotted the distribution of rank abundances and a PCoA plot with simulated data and template data to illustrate this:
+
+.. image:: https://bitbucket.org/repo/89po5a/images/3450964988-Figure2.jpg 
+    :height: 500
+    :width: 800
+
+
+If we want to add feature-metadata correlation, with 2% of the features spiked and each spiked feature correlated with one randomly selected metadata, we can use:
+
+**synthetic_datasets_script.R -f 150 -n 180 -i 2 -k 0.02 -p 10**
+
+As an example, we visualize the spiked dataset with a binary metadatum and a continuous metadatum:
+
+.. image:: https://bitbucket.org/repo/89po5a/images/1496043776-Figure3.jpg
+    :height: 500
+    :width: 800
+
+
+
+
+You can also simulate dataset with feature-feature correlation only. Assume each spiked feature is correlated with two other randomly selected features and 10 of the features are spiked:
+
+**synthetic_datasets_script.R -f 50 -b 10 -m 2 -n 10 -p 10 --runBugBug**
+
+As an final example to show sparseDOSSA can replicate results in previous literature, we choose to benckmark CSS normalization introduced in metagenomeSeq (Paulson, et al, 2013). We use their testing dataset to calibrate our model and introduce binary association to emulate the cluster structure present in the original dataset. The mice dataset can be found [here](https://www.dropbox.com/s/e1jlinzqnkyyrh5/mouse_raw.pcl?dl=0). Assume the data file is $mice.txt$, the command we used to simulate the data is
+
+$ synthetic_datasets_script.R -c mice.txt -m 1 -p 10
+
+We performed the same analyses as in Paulson et al and the results are shown below. We can see the results are very similar to those findings in the original paper.
+
+.. image:: https://bitbucket.org/repo/89po5a/images/2810618475-Figure5.jpg
+    :height: 500
+    :width: 800
+
+
+
+
+**Output of SparseDOSSA**
+
+For each simulation using default model parameters, SparseDOSSA will produce three txt files: *SyntheticMicrobiome.pcl*, *SyntheticMicrobiome-Counts.pcl*, *SyntheticMicrobiomeParameterFile.txt*. The first two files contain the actual microbiome abundance data and the third file records values of model parameters, diagnostic information and spike-in assignment.
+
+**SyntheticMicrobiome.pcl**
+
+This file records the synthetic microbiome data for null community (no spike-in and outliers), outlier-added community without spike-in and final spiked data. We put samples in columns and features in rows. The first chunk of the file is metadata, with row names **Metdata_***. The second chunk is for null community, with row names **Feature_Lognormal_***. The third chunk is for outlier-introduced community, with row names **Feature_Outlier_***. The last chunk is for spiked data, with row names **Feature_spike**. This file records relative abundance data.
+
+**SyntheticMicrobiome-Counts.pcl**
+
+This file has the same organization as *SyntheticMicrobiome.pcl* but records raw counts data.
+
+**SyntheticMicrobiomeParameterFile.txt**
+
+This file records diagnostic information and values of model paramters as well as the spike-in assignment. The most part of this file is used only for debugging. Users can focus on lines after **Minimum Spiked-in Samples**. Those lines record which metadata are correlated with which feature. The format is all metadata that are correlated with a specific features are listed under the name of the feature.
+
+**Full command-line options**
+
+The full command-line options of SparseDOSSA is listed below:
+
+Rscript R/synthetic_datasets_script.R --help
+Usage: synthetic_datasets_script.R [options] NormalizedFile(Optional) CountFile(Optional) TrueFile(Optional)
+
+
+
+
+
+ </help>
+</tool>
